@@ -1,0 +1,31 @@
+name: Supabase Keep-Alive
+
+# Hits /api/ping every 5 days to prevent Supabase free-tier DB from pausing.
+# Supabase pauses after 7 days of inactivity — 5-day interval gives a 2-day buffer.
+#
+# Setup:
+#   Add a GitHub secret named WACRM_URL with the value of your deployed app URL.
+#   Example: https://your-wacrm.vercel.app
+#
+# To test manually: Actions → Supabase Keep-Alive → Run workflow
+
+on:
+  schedule:
+    - cron: "0 6 */5 * *" # every 5 days at 06:00 UTC
+  workflow_dispatch: # allow manual trigger from GitHub Actions UI
+
+jobs:
+  ping:
+    name: Ping WACRM Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/ping
+        run: |
+          echo "Pinging ${{ secrets.WACRM_URL }}/api/ping"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.WACRM_URL }}/api/ping")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Expected 200, got $STATUS — Supabase may be paused or unreachable"
+            exit 1
+          fi
+          echo "OK — Supabase is alive"
